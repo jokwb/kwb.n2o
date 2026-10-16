@@ -86,6 +86,10 @@ Format per entry: where, what looks wrong, why, how to check. When resolved, add
 
 **Check:** Read the Henry section of the Unisense note (v3). If it uses the constant without temperature correction, set `B = 0` for the static variant (e.g. via `override_standard_correction_value(0.0)`) and pick the temperature it prescribes.
 
+**Outcome (phase 2, Unisense note v3, p. 2, eq. 4.1 and 4.2):** (a) The note does apply the van 't Hoff correction: k_H = k_H° · exp(−Δ_soln H / R · (1/T − 1/T°)) with k_H° = 0.0247 mol L⁻¹ bar⁻¹, −Δ_soln H / R = 2675 K and T° = 25 °C. (b) The dimensionless constant is formed at the mixed liquor temperature T_process: H = 1 / (k_H · R · T · 10³ L m⁻³). (c) 0.0247 is quoted at 25 °C. The note does not say how often T_process is sampled, so "once per period" remains the user's reading of Unisense practice, not something the note states.
+
+**Applied:** The static variant now uses both constants of the note (`UNISENSE_HCPS_MOL_M3_PA`, `UNISENSE_B_K`), at the period mean or a given temperature; `static_henry_b_k=None` and `static_henry_hcps_mol_m3_pa=None` fall back to the Sander means. The dynamic default is unchanged (golden files pass). Against the Sander means, the note's constants give an Hccv lower by 0.8 % at 25 °C, 1.7 % at 18 °C and 2.8 % at 10 °C.
+
 ## 7. Reference conditions of the airflow measurement
 
 **Where:** `N2OkLa._qa20` (`physics/kla.py`), `UnisenseCalculation.kla` and `get_emission` (`calculators/unisense.py`)

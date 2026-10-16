@@ -47,9 +47,14 @@ class UnisenseCalculation(EmissionCalculator):
         Default: mean of the aligned temperature series.
     static_henry_hcps_mol_m3_pa : float, optional
         Reference Hcps at 25 °C [mol m-3 Pa-1] for the static constant.
-        Default: the value proposed by the Unisense note
-        (``UNISENSE_HCPS_MOL_M3_PA``). ``None`` uses the Sander (2023) mean,
-        as the dynamic variant does. See docs/open_questions.md entry 6.
+        Default: the value of the Unisense note (``UNISENSE_HCPS_MOL_M3_PA``).
+        ``None`` uses the Sander (2023) mean, as the dynamic variant does.
+    static_henry_b_k : float, optional
+        Temperature dependence parameter B = -dsolnH/R [K] for the static
+        constant. Default: the value of the Unisense note (``UNISENSE_B_K``).
+        ``None`` uses the Sander (2023) mean, as the dynamic variant does.
+        With both ``None`` the static variant is the dynamic one evaluated at
+        a single temperature. See docs/open_questions.md entry 6.
 
     Notes
     -----
@@ -65,8 +70,13 @@ class UnisenseCalculation(EmissionCalculator):
     SMOOTH_THRESHOLD: ClassVar[float] = 0.3
 
     UNISENSE_HCPS_MOL_M3_PA: ClassVar[float] = 0.0247 * 1000 / 100_000
-    """Henry solubility constant of N2O proposed by the Unisense note:
-    0.0247 mol L-1 bar-1 = 2.47e-4 mol m-3 Pa-1 (1000 L m-3, 1e5 Pa bar-1)."""
+    """Henry solubility constant of N2O at 25 °C from the Unisense note (v3,
+    table p. 2): 0.0247 mol L-1 bar-1 = 2.47e-4 mol m-3 Pa-1
+    (1000 L m-3, 1e5 Pa bar-1)."""
+
+    UNISENSE_B_K: ClassVar[float] = 2675.0
+    """Temperature dependence -dsolnH/R of the Henry constant [K] from the
+    Unisense note (v3, table p. 2), used in its eq. 4.2."""
 
     n2on_data_mgL: pd.Series = field(repr=False)
     air_data_zone_m3h: pd.Series = field(repr=False)
@@ -77,6 +87,7 @@ class UnisenseCalculation(EmissionCalculator):
     static_henry: bool = False
     static_henry_temperature_C: float | None = None
     static_henry_hcps_mol_m3_pa: float | None = UNISENSE_HCPS_MOL_M3_PA
+    static_henry_b_k: float | None = UNISENSE_B_K
 
     def __post_init__(self) -> None:
         require_datetime_series("n2on_data_mgL", self.n2on_data_mgL)
@@ -93,6 +104,8 @@ class UnisenseCalculation(EmissionCalculator):
             require_positive(
                 "static_henry_hcps_mol_m3_pa", self.static_henry_hcps_mol_m3_pa
             )
+        if self.static_henry_b_k is not None:
+            require_positive("static_henry_b_k", self.static_henry_b_k)
         if self.static_henry_temperature_C is not None and not isinstance(
             self.static_henry_temperature_C, int | float
         ):
@@ -135,8 +148,10 @@ class UnisenseCalculation(EmissionCalculator):
     def henry_series(self) -> pd.Series:
         """Dimensionless Henry volatility constant Hccv [-] per timestep.
 
-        Dynamic (default): from the measured temperature at every timestep.
-        Static: one value at ``henry_temperature_C``, repeated over the period.
+        Dynamic (default): from the measured temperature at every timestep,
+        with the Sander (2023) reference values.
+        Static: one value at ``henry_temperature_C`` repeated over the period,
+        by default with the constants of the Unisense note (eq. 4.1, 4.2).
         """
         temperature = self.data[self._tmp_name]
 
@@ -146,6 +161,8 @@ class UnisenseCalculation(EmissionCalculator):
         henry = N2OHenry()
         if self.static_henry_hcps_mol_m3_pa is not None:
             henry.override_standard_hcps(self.static_henry_hcps_mol_m3_pa)
+        if self.static_henry_b_k is not None:
+            henry.override_standard_correction_value(self.static_henry_b_k)
         hccv = henry.get_hccv_at_temperature(
             temperature_celsius=self.henry_temperature_C
         )

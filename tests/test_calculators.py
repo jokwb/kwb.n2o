@@ -72,7 +72,11 @@ def test_dynamic_henry_varies_with_temperature():
 
 
 def test_static_henry_with_sander_data_equals_dynamic_at_constant_temperature():
-    kwargs = {"static_henry": True, "static_henry_hcps_mol_m3_pa": None}
+    kwargs = {
+        "static_henry": True,
+        "static_henry_hcps_mol_m3_pa": None,
+        "static_henry_b_k": None,
+    }
     static = UnisenseCalculation(
         _series(0.1), _series(2000), _series(18), 250.0, 5.0, **kwargs
     )
@@ -102,6 +106,18 @@ def test_static_henry_default_is_the_unisense_constant():
     assert calc.henry_temperature_C == 25.0
 
 
+def test_static_henry_follows_the_unisense_note_at_process_temperature():
+    # Unisense note v3, eq. 4.1 and 4.2 with k_H° = 0.0247 mol L-1 bar-1,
+    # -dsolnH/R = 2675 K, T° = 25 °C, R = 8.314e-5 m3 bar mol-1 K-1.
+    calc = UnisenseCalculation(
+        _series(0.1), _series(2000), _series(18), 250.0, 5.0, static_henry=True
+    )
+    t_k = 18.0 + 273.15
+    k_h = 0.0247 * np.exp(2675 * (1 / t_k - 1 / 298.15))  # mol L-1 bar-1
+    expected = 1 / (k_h * 8.314e-5 * t_k * 1e3)
+    np.testing.assert_allclose(calc.henry_series.to_numpy(), expected, rtol=1e-12)
+
+
 def test_static_henry_differs_from_dynamic_with_varying_temperature():
     static = UnisenseCalculation(
         _series(0.1),
@@ -129,6 +145,10 @@ def test_static_henry_rejects_bad_parameters():
             250.0,
             5.0,
             static_henry_hcps_mol_m3_pa=0.0,
+        )
+    with pytest.raises(ValueError, match="greater than zero"):
+        UnisenseCalculation(
+            _series(0.1), _series(2000), _series(18), 250.0, 5.0, static_henry_b_k=-1.0
         )
     with pytest.raises(TypeError, match="number or None"):
         UnisenseCalculation(

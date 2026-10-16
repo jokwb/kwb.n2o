@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import ClassVar, Optional, Protocol, Union
+from typing import ClassVar, Protocol
 
 import pandas as pd
 
 from .data_manipulation import merge_td_on_dt, unisense_smooth
-from .formulas import EmersonN2OEmission, N2OHenry, N2OkLa, UnisenseN2OEmission
+from .physics import EmersonN2OEmission, N2OHenry, N2OkLa, UnisenseN2OEmission
 
 
 class EmissionCalculator(Protocol):
@@ -143,7 +143,7 @@ class TKNMassflowCalculation:
     _q_name: ClassVar[str] = "q_m3*h-1"
     _mf_name: ClassVar[str] = "mdot_g*h-1"
 
-    tkn_mgl: Union[int, float, pd.Series] = field(default_factory=float)
+    tkn_mgl: int | float | pd.Series = field(default_factory=float)
     inflow_m3h: pd.Series = field(default_factory=pd.Series)
 
     def __post_init__(self):
@@ -172,9 +172,7 @@ class TKNMassflowCalculation:
         data.columns = [self._q_name, self._tkn_name]
         return data
 
-    def get_massflow(
-        self, start_date: Optional[str] = None, end_date: Optional[str] = None
-    ):
+    def get_massflow(self, start_date: str | None = None, end_date: str | None = None):
         indexer = pd.IndexSlice[start_date:end_date]
 
         data = self.data.loc[indexer]

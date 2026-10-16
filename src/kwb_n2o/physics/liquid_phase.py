@@ -1,6 +1,5 @@
-from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import ClassVar, Optional, Union
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -21,11 +20,11 @@ class UnisenseN2OEmission:
     @classmethod
     def calculate_n2o_emission_rate_aq(
         cls,
-        hccv: Union[float, pd.Series],
-        c_n2o_aq: Union[float, pd.Series],
-        q_air_m3s: Union[float, pd.Series],
-        v_r_m3: Optional[Union[float, pd.Series]] = None,
-        kla_s: Optional[Union[float, pd.Series]] = None,
+        hccv: float | pd.Series,
+        c_n2o_aq: float | pd.Series,
+        q_air_m3s: float | pd.Series,
+        v_r_m3: float | pd.Series | None = None,
+        kla_s: float | pd.Series | None = None,
     ) -> pd.Series:
         """
         hccv = dimensionless henry volatility constant
@@ -63,10 +62,10 @@ class UnisenseN2OEmission:
     @classmethod
     def _calculate_aerated_emission(
         cls,
-        hccv: Union[float, pd.Series],
-        c_n2o_aq: Union[float, pd.Series],
-        kla_s: Union[float, pd.Series],
-        q_air_m3s: Union[float, pd.Series],
+        hccv: float | pd.Series,
+        c_n2o_aq: float | pd.Series,
+        kla_s: float | pd.Series,
+        q_air_m3s: float | pd.Series,
         v_reactor_m3: float,
     ):
 
@@ -79,41 +78,10 @@ class UnisenseN2OEmission:
     @classmethod
     def _calculate_non_aerated_emission(
         cls,
-        c_n2o_aq: Union[float, pd.Series],
-        hccv: Union[float, pd.Series],
+        c_n2o_aq: float | pd.Series,
+        hccv: float | pd.Series,
     ):
 
         emission = cls.KLA_NON_AERATED * (c_n2o_aq - cls.N2O_ENV_AIR_CONC / hccv)
 
         return emission
-
-
-@dataclass
-class EmersonN2OEmission:
-    ATMOSPHERIC_PRESSURE_PASCAL: ClassVar[float] = 101325.0  # Pa
-    GAS_CONSTANT: ClassVar[float] = 8.314  # J mol-1 K-1
-
-    @classmethod
-    def calculate_n2o_mass_flow_gas(
-        cls,
-        q_air_m3s: Iterable,
-        ppm_n2o_gas: Iterable,
-        temperature_celsius: Union[float, Iterable],
-    ):
-        """
-        return unit: [g] (precisely [g <time>-1] because q is a flow)
-        """
-
-        if not isinstance(temperature_celsius, Iterable):
-            assert len(temperature_celsius) == len(ppm_n2o_gas), "Lengths do not match"
-        assert len(q_air_m3s) == len(ppm_n2o_gas), "Lengths do not match"
-
-        # freight=             pressure             * f      * c_ppm        / (R * (T_°C + 273.15)) * Q_air * 44 g/mol
-        freight = (
-            (cls.ATMOSPHERIC_PRESSURE_PASCAL * 10**-6 * ppm_n2o_gas)
-            / (cls.GAS_CONSTANT * (273.15 + temperature_celsius))
-            * q_air_m3s
-            * 44
-        )
-
-        return freight  # g s-1  n2o! --> n2: *28/44

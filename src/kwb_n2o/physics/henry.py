@@ -1,6 +1,6 @@
-import os
 from dataclasses import dataclass, field
-from typing import ClassVar, Union
+from importlib.resources import as_file, files
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -26,11 +26,6 @@ class N2OHenry:
     STANDARD_TEMPERATURE_CELSIUS: ClassVar[float] = field(default=25.0, init=False)
     R: ClassVar[float] = field(default=8.314, init=False)
 
-    HENRY_DATA_PATH: ClassVar[os.PathLike] = field(
-        default=os.path.join(os.path.dirname(__file__), "datasheets", "Henry.xlsx"),
-        init=False,
-    )
-
     _hcps: float = field(init=False)
     _B: float = field(init=False)
 
@@ -38,7 +33,8 @@ class N2OHenry:
         self._read_sheet_data()
 
     def _read_sheet_data(self):
-        self.data = pd.read_excel(self.HENRY_DATA_PATH, engine="calamine")
+        with as_file(files("kwb_n2o.data") / "Henry.xlsx") as path:
+            self.data = pd.read_excel(path, engine="calamine")
 
     @property
     def Hcps(self):
@@ -70,14 +66,14 @@ class N2OHenry:
         return h
 
     def get_hcps_at_temperature(
-        self, temperature_celsius: Union[float, pd.Series]
-    ) -> Union[float, pd.Series]:
+        self, temperature_celsius: float | pd.Series
+    ) -> float | pd.Series:
         h_new = self._apply_temperature_correction(
             self.Hcps, self.B, temperature_celsius
         )
         return h_new
 
-    def get_hccs_at_temperature(self, temperature_celsius: Union[float, pd.Series]):
+    def get_hccs_at_temperature(self, temperature_celsius: float | pd.Series):
         """
         1. convert standard hcps to hccs
         """
@@ -89,8 +85,8 @@ class N2OHenry:
         )
         return h_new
 
-    def get_hcpv_at_temperature(self, temperature_celsius: Union[float, pd.Series]):
+    def get_hcpv_at_temperature(self, temperature_celsius: float | pd.Series):
         return 1 / self.get_hcps_at_temperature(temperature_celsius)
 
-    def get_hccv_at_temperature(self, temperature_celsius: Union[float, pd.Series]):
+    def get_hccv_at_temperature(self, temperature_celsius: float | pd.Series):
         return 1 / self.get_hccs_at_temperature(temperature_celsius)

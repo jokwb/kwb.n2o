@@ -44,6 +44,7 @@ references/
 ## Phase 2: Literature check
 
 - Work through `docs/open_questions.md` against the sources in `references/`.
+- Verify formulas against the sources in `references/`.
 - For each entry, record the outcome and the source used. Keep the entry; don't delete it.
 - Changes to numbers are made deliberately, one per commit, with golden files regenerated only after explicit approval.
 

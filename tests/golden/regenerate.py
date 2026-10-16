@@ -15,8 +15,8 @@ from pathlib import Path
 import pandas as pd
 
 from kwb_n2o import (
-    EmersonCalculation,
     EmissionFactorCalculation,
+    OffGasCalculation,
     TKNMassflowCalculation,
     UnisenseCalculation,
 )
@@ -47,7 +47,7 @@ def compute_outputs(inp: dict[str, pd.Series], params: dict) -> dict[str, pd.Ser
         reactor_depth_m=params["reactor_depth_m"],
         smooth_data=True,
     )
-    off_gas = EmersonCalculation(
+    off_gas = OffGasCalculation(
         n2o_data_ppm=inp["n2o_ppm"],
         air_data_m3m2h=inp["air_m3m2h"],
         temperature_data_C=inp["temp_C"],

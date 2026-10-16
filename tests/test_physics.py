@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kwb_n2o import EmersonN2OEmission, N2OHenry, N2OkLa, UnisenseN2OEmission
+from kwb_n2o import N2OHenry, N2OkLa, OffGasN2OEmission, UnisenseN2OEmission
 
 IDX = pd.date_range("2025-01-01", periods=3, freq="5min", tz="Europe/Berlin")
 
@@ -56,7 +56,7 @@ def test_liquid_phase_rejects_misaligned_series():
 
 def test_off_gas_accepts_scalar_temperature():
     # Open question 3: the old length check raised TypeError on scalars.
-    flow = EmersonN2OEmission.calculate_n2o_mass_flow_gas(
+    flow = OffGasN2OEmission.calculate_n2o_mass_flow_gas(
         q_air_m3s=pd.Series(0.01, IDX),
         ppm_n2o_gas=pd.Series(30.0, IDX),
         temperature_celsius=18.0,
@@ -68,7 +68,7 @@ def test_off_gas_accepts_scalar_temperature():
 
 def test_off_gas_rejects_misaligned_series():
     with pytest.raises(ValueError, match="same index"):
-        EmersonN2OEmission.calculate_n2o_mass_flow_gas(
+        OffGasN2OEmission.calculate_n2o_mass_flow_gas(
             q_air_m3s=pd.Series(0.01, IDX),
             ppm_n2o_gas=pd.Series(30.0, IDX.shift(1)),
             temperature_celsius=18.0,

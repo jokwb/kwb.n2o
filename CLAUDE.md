@@ -3,7 +3,7 @@
 Research code for estimating N2O emissions from aerated zones of activated-sludge tanks, based on timeseries. Each measurement pathway is one calculator class:
 
 - **Unisense (liquid phase):** dissolved N2O + airflow + temperature → Henry constant (Sander 2023 table) and kLa (Unisense empirical method) → emission rate per area. Based on the Unisense emission calculation note (v3), with two deliberate deviations: it works on arbitrary timesteps, and it derives the Henry constant at every timestep from the measured temperature instead of once per period. Don't "fix" these back to the note.
-- **Off-gas (gas phase):** N2O in off-gas (ppm) + area-specific airflow + temperature → mass flow via ideal gas law. Currently named after the analyzer vendor (`EmersonCalculation`, `EmersonN2OEmission`), but the method applies to any off-gas measurement.
+- **Off-gas (gas phase):** N2O in off-gas (ppm) + area-specific airflow + temperature → mass flow via ideal gas law. `OffGasCalculation` and `OffGasN2OEmission`; the method applies to any off-gas measurement, whatever the analyzer.
 - **Emission factor:** TKN load (inflow × TKN concentration) and EF = emitted N2O-N / TKN load.
 
 Literature is listed in `references/links.json` (IWA N2O monitoring protocol, Unisense emission calculation note v3). The Henry data comes from Sander (2023), linked in `henry.py`.

@@ -2,13 +2,13 @@
 
 from .base import EmissionCalculator
 from .emission_factor import EmissionFactorCalculation, TKNMassflowCalculation
-from .off_gas import EmersonCalculation
+from .off_gas import OffGasCalculation
 from .unisense import UnisenseCalculation
 
 __all__ = [
-    "EmersonCalculation",
     "EmissionCalculator",
     "EmissionFactorCalculation",
+    "OffGasCalculation",
     "TKNMassflowCalculation",
     "UnisenseCalculation",
 ]

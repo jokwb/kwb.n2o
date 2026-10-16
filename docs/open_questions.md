@@ -4,6 +4,8 @@ Possible errors and unverified assumptions in the calculations. Collected during
 
 Line numbers refer to commit `5891a11` (before restructuring). Each entry also names the function, so it can be found after files move.
 
+Renamed in phase 1, task 4: `EmersonCalculation` is now `OffGasCalculation` (`calculators/off_gas.py`), `EmersonN2OEmission` is now `OffGasN2OEmission` (`physics/off_gas.py`).
+
 Format per entry: where, what looks wrong, why, how to check. When resolved, add the outcome and the source used, and keep the entry.
 
 ---

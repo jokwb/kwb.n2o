@@ -6,22 +6,22 @@ emission factor), pure formulas in ``physics``, timeseries preparation in
 """
 
 from .calculators import (
-    EmersonCalculation,
     EmissionCalculator,
     EmissionFactorCalculation,
+    OffGasCalculation,
     TKNMassflowCalculation,
     UnisenseCalculation,
 )
-from .physics import EmersonN2OEmission, N2OHenry, N2OkLa, UnisenseN2OEmission
+from .physics import N2OHenry, N2OkLa, OffGasN2OEmission, UnisenseN2OEmission
 from .preprocessing import merge_td_on_dt, unisense_smooth
 
 __all__ = [
-    "EmersonCalculation",
-    "EmersonN2OEmission",
     "EmissionCalculator",
     "EmissionFactorCalculation",
     "N2OHenry",
     "N2OkLa",
+    "OffGasCalculation",
+    "OffGasN2OEmission",
     "TKNMassflowCalculation",
     "UnisenseCalculation",
     "UnisenseN2OEmission",

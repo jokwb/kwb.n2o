@@ -7,8 +7,8 @@ import pandas as pd
 import pytest
 
 from kwb_n2o import (
-    EmersonCalculation,
     EmissionFactorCalculation,
+    OffGasCalculation,
     TKNMassflowCalculation,
     UnisenseCalculation,
 )
@@ -56,7 +56,7 @@ def test_unisense_static_henry_not_implemented_yet():
 def test_off_gas_rejects_mixed_timezones():
     utc = _series(18, IDX.tz_convert("UTC"))
     with pytest.raises(ValueError, match="time zone"):
-        EmersonCalculation(_series(30), _series(8), utc)
+        OffGasCalculation(_series(30), _series(8), utc)
 
 
 def test_tkn_profile_needs_timedelta_index():

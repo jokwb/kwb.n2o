@@ -3,6 +3,6 @@
 from .henry import N2OHenry
 from .kla import N2OkLa
 from .liquid_phase import UnisenseN2OEmission
-from .off_gas import EmersonN2OEmission
+from .off_gas import OffGasN2OEmission
 
-__all__ = ["EmersonN2OEmission", "N2OHenry", "N2OkLa", "UnisenseN2OEmission"]
+__all__ = ["N2OHenry", "N2OkLa", "OffGasN2OEmission", "UnisenseN2OEmission"]

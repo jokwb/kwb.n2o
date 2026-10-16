@@ -5,17 +5,16 @@ from typing import ClassVar
 
 import pandas as pd
 
-from ..physics import EmersonN2OEmission
+from ..physics import OffGasN2OEmission
 from ._validation import require_datetime_series, require_same_timezone
 from .base import EmissionCalculator
 
 
 @dataclass
-class EmersonCalculation(EmissionCalculator):
+class OffGasCalculation(EmissionCalculator):
     """N2O emission per area of an aerated zone from the off-gas concentration.
 
-    The method applies to any off-gas measurement; the name comes from the
-    analyzer vendor and is renamed in roadmap task 4.
+    The method applies to any off-gas measurement, whatever the analyzer.
 
     Parameters
     ----------
@@ -84,7 +83,7 @@ class EmersonCalculation(EmissionCalculator):
         """
         # g N2O m-2 s-1 -> g N2O-N m-2 h-1
         emission = (
-            EmersonN2OEmission.calculate_n2o_mass_flow_gas(
+            OffGasN2OEmission.calculate_n2o_mass_flow_gas(
                 ppm_n2o_gas=self.data[self._n2o_name],
                 q_air_m3s=self.data[self._air_name] / 3600,
                 temperature_celsius=self.data[self._tmp_name],

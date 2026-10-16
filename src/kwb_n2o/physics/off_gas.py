@@ -11,7 +11,7 @@ import pandas as pd
 from ._common import same_index
 
 
-class EmersonN2OEmission:
+class OffGasN2OEmission:
     """N2O mass flow in the off-gas via the ideal gas law."""
 
     ATMOSPHERIC_PRESSURE_PA: ClassVar[float] = 101325.0

@@ -4,7 +4,7 @@ from typing import ClassVar, Protocol
 
 import pandas as pd
 
-from .data_manipulation import merge_td_on_dt, unisense_smooth
+from .preprocessing import merge_td_on_dt, unisense_smooth
 from .physics import EmersonN2OEmission, N2OHenry, N2OkLa, UnisenseN2OEmission
 
 

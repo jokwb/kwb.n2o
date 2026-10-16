@@ -40,6 +40,8 @@ Format per entry: where, what looks wrong, why, how to check. When resolved, add
 
 **Check:** Probably just a missing `not` the other way around. It's validation, not numerics, so it could be fixed during the refactor if the user agrees.
 
+**Outcome (phase 1, task 3):** Fixed during the refactor with the user's agreement (answer to question 9: raise what can falsify results). The length check is replaced by `physics._common.same_index`, which raises `ValueError` when Series arguments have different indexes, and scalar temperature is accepted (`tests/test_physics.py::test_off_gas_accepts_scalar_temperature`). Numbers unchanged, golden files pass.
+
 ## 4. Gas temperature and pressure in the off-gas calculation
 
 **Where:** `EmersonN2OEmission.calculate_n2o_mass_flow_gas` (`formulas/emission.py` L112–117), called from `EmersonCalculation.get_emission`

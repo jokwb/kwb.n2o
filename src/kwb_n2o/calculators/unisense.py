@@ -59,7 +59,7 @@ class UnisenseCalculation(EmissionCalculator):
     @property
     def kla(self):
         kla = N2OkLa(
-            aearation_field_size=self.zone_area_m2, reactor_depth=self.reactor_depth_m
+            aeration_field_m2=self.zone_area_m2, reactor_depth_m=self.reactor_depth_m
         ).get_kla_at_temperature(
             airflow_m3s=self.data[self._air_name] / 3600,
             temperature_celsius=self.data[self._tmp_name],
@@ -78,7 +78,7 @@ class UnisenseCalculation(EmissionCalculator):
             v_r_m3=self.reactor_depth_m * self.zone_area_m2,
         )
 
-        area_massflow = massflow[massflow.columns[-1]] * self.reactor_depth_m * 3600
+        area_massflow = massflow * self.reactor_depth_m * 3600
         area_massflow.name = "emission_rate [g N2ON m-2 h-1]"
 
         area_massflow = area_massflow.where(area_massflow >= 0, 0)

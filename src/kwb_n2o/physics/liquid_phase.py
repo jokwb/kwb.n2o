@@ -1,21 +1,31 @@
-from dataclasses import dataclass, field
+"""N2O emission from the liquid phase, from dissolved N2O (Unisense method).
+
+Follows the Unisense emission calculation note (v3), see
+``references/links.json``. Pure formulas: every argument is a float or a
+Series, Series must share one index, nothing is aligned here.
+"""
+
 from typing import ClassVar
 
 import numpy as np
 import pandas as pd
 
+from ._common import as_series_like, same_index
 
-@dataclass
+
 class UnisenseN2OEmission:
-    # _N2O_ENV_AIR_CONC = equilibrium concentration (g/m3)
+    """Emission rate of N2O from the liquid phase per reactor volume."""
 
-    AERATION_THRESHOLD_M3S: ClassVar[float] = field(default=50 / 3600, init=False)
-    KLA_NON_AERATED: ClassVar[float] = field(
-        default=3 / (24 * 3600), init=False
-    )  # 2-4 d-1
-    N2O_ENV_AIR_CONC: ClassVar[float] = field(
-        default=0.0003 / 0.636483023, init=False
-    )  # g m-3 N2O Baresel et al. 2016
+    AERATION_THRESHOLD_M3S: ClassVar[float] = 50 / 3600
+    """Airflow [m3 s-1] from which a timestep counts as aerated (50 m3 h-1)."""
+
+    KLA_NON_AERATED_S: ClassVar[float] = 3 / (24 * 3600)
+    """Mass transfer coefficient [s-1] without aeration: 3 d-1, range 2-4 d-1
+    (Unisense note)."""
+
+    N2O_ENV_AIR_CONC_GM3: ClassVar[float] = 0.0003 / 0.636483023
+    """N2O concentration of ambient air [g N2O m-3], Baresel et al. (2016).
+    See docs/open_questions.md entry 2 for the divisor."""
 
     @classmethod
     def calculate_n2o_emission_rate_aq(
@@ -23,41 +33,59 @@ class UnisenseN2OEmission:
         hccv: float | pd.Series,
         c_n2o_aq: float | pd.Series,
         q_air_m3s: float | pd.Series,
-        v_r_m3: float | pd.Series | None = None,
-        kla_s: float | pd.Series | None = None,
-    ) -> pd.Series:
-        """
-        hccv = dimensionless henry volatility constant
-        c_n2o_aq = aqueous n2o concentration (g m-3)
-        q_air_m3s = airflow per second
-        v_r_m3 = reactor volume
-        klas_s = mass transfer coefficient for n2o (s-1)
-        """
-        df = pd.DataFrame(columns=["H", "c_aq", "q_air", "kla"])
-        df["H"] = hccv  # -
-        df["c_aq"] = c_n2o_aq  # g m-3
-        df["q_air"] = q_air_m3s  # m3 s-1
-        df["kla"] = kla_s  # s-1
+        v_r_m3: float,
+        kla_s: float | pd.Series,
+        return_emission_type: bool = False,
+    ) -> float | pd.Series | tuple[float | pd.Series, str | pd.Series]:
+        """Emission rate per reactor volume, aerated or non-aerated per timestep.
 
-        df["emission_type"] = np.where(
-            df["q_air"] >= cls.AERATION_THRESHOLD_M3S, "aerated", "non_aerated"
-        )
+        Parameters
+        ----------
+        hccv : float or Series
+            Dimensionless Henry volatility constant (c_gas / c_aq) [-].
+        c_n2o_aq : float or Series
+            Dissolved N2O concentration [g m-3].
+        q_air_m3s : float or Series
+            Airflow into the zone [m3 s-1]. Decides aerated / non-aerated
+            against ``AERATION_THRESHOLD_M3S``.
+        v_r_m3 : float
+            Volume of the zone [m3].
+        kla_s : float or Series
+            Mass transfer coefficient for N2O when aerated [s-1].
+        return_emission_type : bool, default False
+            Also return which formula was used per timestep.
 
-        df["emission_rate [g N2O m-3 s-1]"] = np.where(
-            df["emission_type"] == "aerated",
+        Returns
+        -------
+        float or Series
+            Emission rate [g N2O m-3 s-1].
+        str or Series, optional
+            ``"aerated"`` or ``"non_aerated"``, only with
+            ``return_emission_type=True``.
+        """
+        same_index(hccv, c_n2o_aq, q_air_m3s, kla_s)
+
+        aerated = q_air_m3s >= cls.AERATION_THRESHOLD_M3S
+
+        rate = np.where(
+            aerated,
             cls._calculate_aerated_emission(
-                c_n2o_aq=df["c_aq"],
-                hccv=df["H"],
-                kla_s=df["kla"],
-                q_air_m3s=df["q_air"],
+                c_n2o_aq=c_n2o_aq,
+                hccv=hccv,
+                kla_s=kla_s,
+                q_air_m3s=q_air_m3s,
                 v_reactor_m3=v_r_m3,
-            ),  # yes
-            cls._calculate_non_aerated_emission(
-                c_n2o_aq=df["c_aq"], hccv=df["H"]
-            ),  # no
+            ),
+            cls._calculate_non_aerated_emission(c_n2o_aq=c_n2o_aq, hccv=hccv),
         )
+        rate = as_series_like(rate, hccv, c_n2o_aq, q_air_m3s, kla_s)
 
-        return df[["emission_type", "emission_rate [g N2O m-3 s-1]"]]
+        if not return_emission_type:
+            return rate
+
+        emission_type = np.where(aerated, "aerated", "non_aerated")
+        emission_type = as_series_like(emission_type, hccv, c_n2o_aq, q_air_m3s, kla_s)
+        return rate, emission_type
 
     @classmethod
     def _calculate_aerated_emission(
@@ -67,8 +95,8 @@ class UnisenseN2OEmission:
         kla_s: float | pd.Series,
         q_air_m3s: float | pd.Series,
         v_reactor_m3: float,
-    ):
-
+    ) -> float | pd.Series:
+        """Stripping by the air bubbles [g N2O m-3 s-1], Unisense note."""
         e = np.exp((-kla_s / hccv) * (v_reactor_m3 / q_air_m3s))
 
         emission = hccv * c_n2o_aq * (1 - e) * q_air_m3s / v_reactor_m3
@@ -80,8 +108,11 @@ class UnisenseN2OEmission:
         cls,
         c_n2o_aq: float | pd.Series,
         hccv: float | pd.Series,
-    ):
+    ) -> float | pd.Series:
+        """Surface exchange against ambient air [g N2O m-3 s-1], Unisense note.
 
-        emission = cls.KLA_NON_AERATED * (c_n2o_aq - cls.N2O_ENV_AIR_CONC / hccv)
+        See docs/open_questions.md entry 1 for the unit basis of the two terms.
+        """
+        emission = cls.KLA_NON_AERATED_S * (c_n2o_aq - cls.N2O_ENV_AIR_CONC_GM3 / hccv)
 
         return emission

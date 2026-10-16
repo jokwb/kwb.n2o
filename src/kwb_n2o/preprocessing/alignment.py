@@ -1,21 +1,11 @@
-from collections.abc import Sequence
+"""Joining a repeating profile (TimedeltaIndex) onto a timeseries (DatetimeIndex)."""
+
 from itertools import cycle
-from typing import Literal
 
 import pandas as pd
 from more_itertools import windowed
 
-_tcomponents = [
-    "days",
-    "hours",
-    "minutes",
-    "seconds",
-    "milliseconds",
-    "microseconds",
-    "nanoseconds",
-]
-TimedeltaComponents = Sequence[Literal[*_tcomponents]]
-TimedeltaComponentsAttrMapping = {
+TIMEDELTA_COMPONENT_TO_DATETIME_ATTR = {
     "days": "day",
     "hours": "hour",
     "minutes": "minute",
@@ -29,29 +19,46 @@ TimedeltaComponentsAttrMapping = {
 def merge_td_on_dt(
     datetime_data: pd.DataFrame | pd.Series,
     timedelta_data: pd.DataFrame | pd.Series,
-):
+) -> pd.DataFrame:
+    """Left-join a profile with a TimedeltaIndex onto data with a DatetimeIndex.
 
-    assert isinstance(datetime_data.index, pd.DatetimeIndex), (
-        "datetime_data must have a DatetimeIndex."
-    )
-    assert isinstance(timedelta_data.index, pd.TimedeltaIndex), (
-        "timedelta_data must have a TimedeltaIndex."
-    )
+    The profile is matched on the time-of-day components that are non-zero
+    somewhere in its index: an hourly profile over one day is matched on
+    the hour, a 15 min profile on hour and minute. If the profile spans
+    several days, its ``days`` component is cycled over the calendar days
+    of ``datetime_data``.
 
-    copy_as_df = lambda x: (
-        x.copy() if isinstance(x, pd.DataFrame) else x.to_frame().copy()
-    )
+    Parameters
+    ----------
+    datetime_data : DataFrame or Series
+        Timeseries with a DatetimeIndex.
+    timedelta_data : DataFrame or Series
+        Profile with a TimedeltaIndex. Column (or Series) names must not
+        overlap with those of ``datetime_data``.
+
+    Returns
+    -------
+    DataFrame
+        ``datetime_data`` with the profile columns appended; rows without a
+        matching profile entry get NaN.
+    """
+    if not isinstance(datetime_data.index, pd.DatetimeIndex):
+        raise TypeError("datetime_data must have a DatetimeIndex.")
+    if not isinstance(timedelta_data.index, pd.TimedeltaIndex):
+        raise TypeError("timedelta_data must have a TimedeltaIndex.")
+
+    def copy_as_df(x: pd.DataFrame | pd.Series) -> pd.DataFrame:
+        return x.copy() if isinstance(x, pd.DataFrame) else x.to_frame().copy()
 
     _out = copy_as_df(datetime_data)
     _td = copy_as_df(timedelta_data)
 
-    _comp = timedelta_data.index.components.loc[
-        :, (timedelta_data.index.components != 0).any()
-    ]
+    components = timedelta_data.index.components
+    _comp = components.loc[:, (components != 0).any()]
 
     _td.index = pd.MultiIndex.from_arrays(
         arrays=[data for _, data in _comp.items()],
-        names=[TimedeltaComponentsAttrMapping[c] for c in _comp.columns],
+        names=[TIMEDELTA_COMPONENT_TO_DATETIME_ATTR[c] for c in _comp.columns],
     )
 
     index_levels = {c: getattr(_out.index, c) for c in _td.index.names}

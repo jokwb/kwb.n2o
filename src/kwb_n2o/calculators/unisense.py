@@ -25,7 +25,7 @@ class UnisenseCalculation(EmissionCalculator):
     def __post_init__(self):
         if self.smooth_data:
             self.n2on_data_mgL = unisense_smooth(
-                self.n2on_data_mgL, window="5 min", treshold=0.3
+                self.n2on_data_mgL, window="5 min", threshold=0.3
             )
 
         self._data = (

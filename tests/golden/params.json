@@ -1,0 +1,7 @@
+{
+  "zone_area_m2": 250.0,
+  "reactor_depth_m": 5.0,
+  "tkn_const_mgL": 90.0,
+  "ef_naive_start": "2025-10-24 06:00",
+  "ef_naive_end": "2025-10-25 18:00"
+}

@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current phase: 1, structural refactor.**
+**Current phase: 2, literature check.** Phase 1 is complete.
 
 Tick off tasks as they are done. Add new tasks when they come up, and ask before reordering or dropping planned ones.
 
@@ -44,7 +44,7 @@ references/
 ## Phase 2: Literature check
 
 - Work through `docs/open_questions.md` against the sources in `references/`.
-- Verify formulas against the sources in `references/`.
+- Verify formulas against the sources in `references/`. Verified formulas are logged in `docs/literature_check.md`.
 - For each entry, record the outcome and the source used. Keep the entry; don't delete it.
 - Changes to numbers are made deliberately, one per commit, with golden files regenerated only after explicit approval.
 

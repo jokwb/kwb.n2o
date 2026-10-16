@@ -63,3 +63,15 @@ Format per entry: where, what looks wrong, why, how to check. When resolved, add
 **Question:** This is a methodological choice, not necessarily an error. It biases sums and means upward when noise around zero is common, for example in non-aerated periods where `c_aq` is below equilibrium. Consider whether clipping belongs in the calculator or should be an option applied later, and how often it happens in real data.
 
 **Check:** Look at what the IWA protocol recommends. Count the clipped time steps on a real dataset.
+
+## 6. Static Henry constant: temperature correction and reference temperature
+
+**Where:** `UnisenseCalculation.henry_series` with `static_henry=True` (`calculators/unisense.py`), constant `UnisenseCalculation.UNISENSE_HCPS_MOL_M3_PA`
+
+**What:** The static variant (roadmap task 5) uses the constant proposed by the Unisense note, 0.0247 mol L⁻¹ bar⁻¹ = 2.47e-4 mol m⁻³ Pa⁻¹, as the reference Hcps at 25 °C, applies the Sander (2023) van 't Hoff correction to one temperature (the period mean by default, or `static_henry_temperature_C`), and forms Hccv = 1 / (Hcps · R · T) at that temperature.
+
+**Unverified:** The note itself could not be read during the refactor (not reachable from the development environment). It is not confirmed (a) whether the note corrects 0.0247 for temperature at all or uses it as given, (b) at which temperature it forms the dimensionless constant, and (c) whether 0.0247 is quoted at 25 °C.
+
+**Impact:** Only `static_henry=True`. The default `static_henry=False` is unchanged and pinned by the golden files. With `static_henry_hcps_mol_m3_pa=None` the static variant reduces to the dynamic one evaluated at a single temperature (tested).
+
+**Check:** Read the Henry section of the Unisense note (v3). If it uses the constant without temperature correction, set `B = 0` for the static variant (e.g. via `override_standard_correction_value(0.0)`) and pick the temperature it prescribes.

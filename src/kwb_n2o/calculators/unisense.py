@@ -40,8 +40,16 @@ class UnisenseCalculation(EmissionCalculator):
         Apply ``unisense_smooth`` (5 min window, threshold 0.3) to the N2O
         series before aligning.
     static_henry : bool, default False
-        One Henry constant for the whole period instead of one per timestep.
-        Not implemented yet (roadmap task 5).
+        One Henry constant for the whole period, as in the Unisense note,
+        instead of one per timestep from the measured temperature.
+    static_henry_temperature_C : float, optional
+        Temperature [°C] at which the static Henry constant is formed.
+        Default: mean of the aligned temperature series.
+    static_henry_hcps_mol_m3_pa : float, optional
+        Reference Hcps at 25 °C [mol m-3 Pa-1] for the static constant.
+        Default: the value proposed by the Unisense note
+        (``UNISENSE_HCPS_MOL_M3_PA``). ``None`` uses the Sander (2023) mean,
+        as the dynamic variant does. See docs/open_questions.md entry 6.
 
     Notes
     -----
@@ -56,6 +64,10 @@ class UnisenseCalculation(EmissionCalculator):
     SMOOTH_WINDOW: ClassVar[str] = "5 min"
     SMOOTH_THRESHOLD: ClassVar[float] = 0.3
 
+    UNISENSE_HCPS_MOL_M3_PA: ClassVar[float] = 0.0247 * 1000 / 100_000
+    """Henry solubility constant of N2O proposed by the Unisense note:
+    0.0247 mol L-1 bar-1 = 2.47e-4 mol m-3 Pa-1 (1000 L m-3, 1e5 Pa bar-1)."""
+
     n2on_data_mgL: pd.Series = field(repr=False)
     air_data_zone_m3h: pd.Series = field(repr=False)
     temperature_data_C: pd.Series = field(repr=False)
@@ -63,6 +75,8 @@ class UnisenseCalculation(EmissionCalculator):
     reactor_depth_m: float
     smooth_data: bool = False
     static_henry: bool = False
+    static_henry_temperature_C: float | None = None
+    static_henry_hcps_mol_m3_pa: float | None = UNISENSE_HCPS_MOL_M3_PA
 
     def __post_init__(self) -> None:
         require_datetime_series("n2on_data_mgL", self.n2on_data_mgL)
@@ -75,6 +89,14 @@ class UnisenseCalculation(EmissionCalculator):
         )
         require_positive("zone_area_m2", self.zone_area_m2)
         require_positive("reactor_depth_m", self.reactor_depth_m)
+        if self.static_henry_hcps_mol_m3_pa is not None:
+            require_positive(
+                "static_henry_hcps_mol_m3_pa", self.static_henry_hcps_mol_m3_pa
+            )
+        if self.static_henry_temperature_C is not None and not isinstance(
+            self.static_henry_temperature_C, int | float
+        ):
+            raise TypeError("static_henry_temperature_C must be a number or None.")
 
         if self.smooth_data:
             self.n2on_data_mgL = unisense_smooth(
@@ -103,14 +125,32 @@ class UnisenseCalculation(EmissionCalculator):
         return self._data
 
     @property
-    def henry_series(self) -> pd.Series:
-        """Dimensionless Henry volatility constant Hccv [-] per timestep."""
-        if self.static_henry:
-            raise NotImplementedError("static_henry is roadmap task 5.")
+    def henry_temperature_C(self) -> float:
+        """Temperature [°C] the static Henry constant is formed at."""
+        if self.static_henry_temperature_C is not None:
+            return float(self.static_henry_temperature_C)
+        return float(self.data[self._tmp_name].mean())
 
-        return N2OHenry().get_hccv_at_temperature(
-            temperature_celsius=self.data[self._tmp_name]
+    @property
+    def henry_series(self) -> pd.Series:
+        """Dimensionless Henry volatility constant Hccv [-] per timestep.
+
+        Dynamic (default): from the measured temperature at every timestep.
+        Static: one value at ``henry_temperature_C``, repeated over the period.
+        """
+        temperature = self.data[self._tmp_name]
+
+        if not self.static_henry:
+            return N2OHenry().get_hccv_at_temperature(temperature_celsius=temperature)
+
+        henry = N2OHenry()
+        if self.static_henry_hcps_mol_m3_pa is not None:
+            henry.override_standard_hcps(self.static_henry_hcps_mol_m3_pa)
+        hccv = henry.get_hccv_at_temperature(
+            temperature_celsius=self.henry_temperature_C
         )
+
+        return pd.Series(hccv, index=temperature.index, name=temperature.name)
 
     @property
     def kla(self) -> pd.Series:

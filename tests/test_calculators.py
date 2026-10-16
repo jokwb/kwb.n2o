@@ -45,12 +45,100 @@ def test_unisense_rejects_non_positive_geometry(area, depth):
         UnisenseCalculation(_series(0.1), _series(2000), _series(18), area, depth)
 
 
-def test_unisense_static_henry_not_implemented_yet():
+def _varying_temperature():
+    return pd.Series(np.linspace(16.0, 20.0, len(IDX)), IDX)
+
+
+def test_static_henry_is_constant_over_the_period():
     calc = UnisenseCalculation(
-        _series(0.1), _series(2000), _series(18), 250.0, 5.0, static_henry=True
+        _series(0.1),
+        _series(2000),
+        _varying_temperature(),
+        250.0,
+        5.0,
+        static_henry=True,
     )
-    with pytest.raises(NotImplementedError):
-        _ = calc.henry_series
+    henry = calc.henry_series
+    assert henry.index.equals(calc.data.index)
+    assert henry.nunique() == 1
+    assert calc.henry_temperature_C == pytest.approx(18.0)
+
+
+def test_dynamic_henry_varies_with_temperature():
+    calc = UnisenseCalculation(
+        _series(0.1), _series(2000), _varying_temperature(), 250.0, 5.0
+    )
+    assert calc.henry_series.nunique() == len(IDX)
+
+
+def test_static_henry_with_sander_data_equals_dynamic_at_constant_temperature():
+    kwargs = {"static_henry": True, "static_henry_hcps_mol_m3_pa": None}
+    static = UnisenseCalculation(
+        _series(0.1), _series(2000), _series(18), 250.0, 5.0, **kwargs
+    )
+    dynamic = UnisenseCalculation(_series(0.1), _series(2000), _series(18), 250.0, 5.0)
+    np.testing.assert_allclose(
+        static.henry_series.to_numpy(), dynamic.henry_series.to_numpy(), rtol=1e-12
+    )
+    np.testing.assert_allclose(
+        static.get_emission().to_numpy(), dynamic.get_emission().to_numpy(), rtol=1e-12
+    )
+
+
+def test_static_henry_default_is_the_unisense_constant():
+    # At the 25 °C reference temperature no temperature correction applies:
+    # Hccv = 1 / (Hcps * R * T) with Hcps = 0.0247 mol L-1 bar-1.
+    calc = UnisenseCalculation(
+        _series(0.1),
+        _series(2000),
+        _series(18),
+        250.0,
+        5.0,
+        static_henry=True,
+        static_henry_temperature_C=25.0,
+    )
+    expected = 1 / (2.47e-4 * 8.314 * 298.15)
+    np.testing.assert_allclose(calc.henry_series.to_numpy(), expected, rtol=1e-12)
+    assert calc.henry_temperature_C == 25.0
+
+
+def test_static_henry_differs_from_dynamic_with_varying_temperature():
+    static = UnisenseCalculation(
+        _series(0.1),
+        _series(2000),
+        _varying_temperature(),
+        250.0,
+        5.0,
+        static_henry=True,
+    )
+    dynamic = UnisenseCalculation(
+        _series(0.1), _series(2000), _varying_temperature(), 250.0, 5.0
+    )
+    assert not np.allclose(
+        static.get_emission().to_numpy(), dynamic.get_emission().to_numpy()
+    )
+    assert np.isfinite(static.get_emission().to_numpy()).all()
+
+
+def test_static_henry_rejects_bad_parameters():
+    with pytest.raises(ValueError, match="greater than zero"):
+        UnisenseCalculation(
+            _series(0.1),
+            _series(2000),
+            _series(18),
+            250.0,
+            5.0,
+            static_henry_hcps_mol_m3_pa=0.0,
+        )
+    with pytest.raises(TypeError, match="number or None"):
+        UnisenseCalculation(
+            _series(0.1),
+            _series(2000),
+            _series(18),
+            250.0,
+            5.0,
+            static_henry_temperature_C="20",
+        )
 
 
 def test_off_gas_rejects_mixed_timezones():

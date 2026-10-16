@@ -53,16 +53,3 @@ def merge_td_on_dt(
     _out.index = _out.index.droplevel(list(range(1, _out.index.nlevels)))
 
     return _out
-
-def inner_concat(*dfs: pd.DataFrame) -> pd.DataFrame:
-    assert all(isinstance(idx, pd.DatetimeIndex) for idx in [df.index for df in dfs]), "All dfs need a DatetimeIndex"
-
-    merged = pd.concat([*dfs], axis=1).loc[
-        max(df.first_valid_index() for df in dfs):
-        min(df.last_valid_index() for df in dfs)
-    ]
-
-    return merged
-
-
-

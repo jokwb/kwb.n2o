@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import ClassVar, Optional, Protocol, Union
 
-import matplotlib.pyplot as plt
 import pandas as pd
 
 from .data_manipulation import merge_td_on_dt, unisense_smooth
@@ -89,18 +88,6 @@ class UnisenseCalculation(EmissionCalculator):
         area_massflow = area_massflow.where(area_massflow >= 0, 0)
 
         return area_massflow
-
-    def get_freight(self, q_m3s: pd.Series) -> pd.Series:
-        emission = self.get_emission()
-
-        _df = (
-            pd.concat([emission, q_m3s], axis=1)
-            .loc[emission.first_valid_index() : emission.last_valid_index()]
-            .dropna(how="any")
-        )
-        _df.columns = ["emission", "q"]
-
-        raise NotImplementedError()
 
 
 @dataclass
